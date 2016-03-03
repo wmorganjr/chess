@@ -1,7 +1,10 @@
 (ns chess.core
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
+            [hiccup.core :refer [html]]
+            [hiccup.page :refer [include-css]]
             [clojure.string :as string]
+            [ring.middleware.resource :refer [wrap-resource]]
             [ring.middleware.params :refer [wrap-params]]))
 
 (defn back-row
@@ -157,22 +160,32 @@
     (for [row board]
       (string/join " " (map icons row)))))
 
+(defn as-html [{:keys [board]}]
+  [:table#board
+   (map (fn [row offset]
+          [:tr.row
+           (map (fn [piece color]
+                  [:td.piece {:class color}
+                   (icons piece)])
+                row offset)])
+        board (iterate next (cycle ["white" "black"])))])
+
 (defn test-endpoint
   [req]
-  (str "<pre>"
-  (render {:board (move-piece {:from  "e2"
-                               :to    "e4"
-                               :piece :P}
-                              (:board @game-state))})
-  "</pre>"))
+  [:pre (render {:board (move-piece {:from  "e2"
+                                     :to    "e4"
+                                     :piece :P}
+                                    (:board @game-state))})])
 
 (defroutes handler
-  (GET "/" [] "<h1>Hello World</h1>")
+  (GET "/" [] (html [:h1 "Hello World"]))
+  (GET "/test" [req] (html (test-endpoint req)))
   (GET "/render" [req] (render @game-state))
-  (GET "/test" [req] (test-endpoint req))
-  (GET "/render.html" [req] (str "<pre>" (render @game-state) "</pre>")) 
-  (route/not-found "<h1>Page not found</h1>"))
+  (GET "/render.html" [req] (html [:pre (render @game-state)]))
+  (GET "/styled" [req] (html [:head (include-css "board.css")] [:body (as-html @game-state)]))
+  (route/not-found (html [:h1 "Page not found"])))
 
 (def app
   (-> handler
-      wrap-params))
+      wrap-params
+      (wrap-resource "public")))
