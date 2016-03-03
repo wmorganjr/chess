@@ -1,0 +1,6 @@
+.piece.black {background-color: #996633}
+.piece.white {background-color: #e6ccb3}
+.piece {border: none; padding: 0; margin: 0; height: 12.5%; width: 12.5%}
+#board {text-align: center;
+        margin: 0; border: none; padding: 0; margin: 0;
+        width: 12em; height: 12em;}
