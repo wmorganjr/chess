@@ -2,7 +2,9 @@
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
             [hiccup.core :refer [html]]
+            [hiccup.page :refer [include-css]]
             [clojure.string :as string]
+            [ring.middleware.resource :refer [wrap-resource]]
             [ring.middleware.params :refer [wrap-params]]))
 
 (def starting-board
@@ -59,12 +61,12 @@
       (string/join " " (map icons row)))))
 
 (defn as-html [{:keys [board]}]
-  [:div#board
+  [:table#board
    (map (fn [row offset]
-          [:div.row
+          [:tr.row
            (map (fn [piece color]
-                  [:span {:class (str "piece " color)}
-                   piece])
+                  [:td.piece {:class color}
+                   (icons piece)])
                 row offset)])
         board (iterate next (cycle ["white" "black"])))])
 
@@ -80,9 +82,10 @@
   (GET "/test" [req] (html (test-endpoint req)))
   (GET "/render" [req] (render @game-state))
   (GET "/render.html" [req] (html [:pre (render @game-state)]))
-  (GET "/styled" [req] (html (as-html @game-state)))
+  (GET "/styled" [req] (html [:head (include-css "board.css")] [:body (as-html @game-state)]))
   (route/not-found (html [:h1 "Page not found"])))
 
 (def app
   (-> handler
-      wrap-params))
+      wrap-params
+      (wrap-resource "public")))
