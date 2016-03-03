@@ -16,15 +16,19 @@
   [color]
   (repeat 8 {:piece :pawn :color color}))
 
+(def empty-row
+  (repeat 8 nil))
+
 (def starting-board
-  [[:r :n :b :q :k :b :n :r]
-   [:p :p :p :p :p :p :p :p]
-   [nil nil nil nil nil nil nil nil]
-   [nil nil nil nil nil nil nil nil]
-   [nil nil nil nil nil nil nil nil]
-   [nil nil nil nil nil nil nil nil]
-   [:P :P :P :P :P :P :P :P]
-   [:R :N :B :Q :K :B :N :R]])
+  (mapv vec
+       [(back-row :white)
+        (second-row :white)
+        empty-row
+        empty-row
+        empty-row
+        empty-row
+        (second-row :black)
+        (back-row :black)]))
 
 (def starting-player
   {:previous-move nil
@@ -37,18 +41,18 @@
 
 (def icons
   {nil " "
-   :K \u2654
-   :Q \u2655
-   :R \u2656
-   :B \u2657
-   :N \u2658
-   :P \u2659
-   :k \u265A
-   :q \u265B
-   :r \u265C
-   :b \u265D
-   :n \u265E
-   :p \u265F})
+   {:color :white :piece :king}   \u2654
+   {:color :white :piece :queen}  \u2655
+   {:color :white :piece :rook}   \u2656
+   {:color :white :piece :bishop} \u2657
+   {:color :white :piece :knight} \u2658
+   {:color :white :piece :pawn}   \u2659
+   {:color :black :piece :king}   \u265A
+   {:color :black :piece :queen}  \u265B
+   {:color :black :piece :rook}   \u265C
+   {:color :black :piece :bishop} \u265D
+   {:color :black :piece :knight} \u265E
+   {:color :black :piece :pawn}   \u265F})
 
 (def alg-to-indices
   (let [letters (zipmap "abcdefgh" (range))
@@ -136,7 +140,7 @@
 (queen-squares starting-board [3 3])
 
 (defn moveable-squares
-  [piece indices]
+  [board piece indices]
   (cond
     (#{:k :K} piece) (adjacent-squares indices)
     (#{:n :N} piece) (knight-squares indices)
