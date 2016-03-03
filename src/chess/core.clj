@@ -58,6 +58,16 @@
     (for [row board]
       (string/join " " (map icons row)))))
 
+(defn as-html [{:keys [board]}]
+  [:div#board
+   (map (fn [row offset]
+          [:div.row
+           (map (fn [piece color]
+                  [:span {:class (str "piece " color)}
+                   piece])
+                row offset)])
+        board (iterate next (cycle ["white" "black"])))])
+
 (defn test-endpoint
   [req]
   [:pre (render {:board (move-piece {:from  "e2"
@@ -70,6 +80,7 @@
   (GET "/test" [req] (html (test-endpoint req)))
   (GET "/render" [req] (render @game-state))
   (GET "/render.html" [req] (html [:pre (render @game-state)]))
+  (GET "/styled" [req] (html (as-html @game-state)))
   (route/not-found (html [:h1 "Page not found"])))
 
 (def app
