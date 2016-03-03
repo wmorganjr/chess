@@ -14,8 +14,14 @@
    [:P :P :P :P :P :P :P :P]
    [:R :N :B :Q :K :B :N :R]])
 
+(def starting-player
+  {:previous-move nil
+   :has-castled false})
+
 (def game-state
-  (atom {:board starting-board}))
+  (atom {:board starting-board
+         :players {:white starting-player
+                   :black starting-player}}))
 
 (def icons
   {nil " "
@@ -32,15 +38,38 @@
    :n \u265E
    :p \u265F})
 
+(def alg-to-indices
+  (let [letters (zipmap "abcdefgh" (range))
+        numbers (zipmap "87654321" (range))]
+    (fn
+      [alg]
+      (reverse (map deliver [letters numbers] alg)))))
+
+(defn move-piece
+  [move board-state]
+  (-> board-state
+    (assoc-in (alg-to-indices (:from move)) nil)
+    (assoc-in (alg-to-indices (:to move)) (:piece move))))
+
 (defn render
   [{:keys [board]}]
   (string/join \newline
     (for [row board]
       (string/join " " (map icons row)))))
 
+(defn test-endpoint
+  [req]
+  (str "<pre>"
+  (render {:board (move-piece {:from  "e2"
+                               :to    "e4"
+                               :piece :P}
+                              (:board @game-state))})
+  "</pre>"))
+
 (defroutes handler
   (GET "/" [] "<h1>Hello World</h1>")
-  (GET "/render" [req] (render @game-state)) 
+  (GET "/render" [req] (render @game-state))
+  (GET "/test" [req] (test-endpoint req))
   (GET "/render.html" [req] (str "<pre>" (render @game-state) "</pre>")) 
   (route/not-found "<h1>Page not found</h1>"))
 
