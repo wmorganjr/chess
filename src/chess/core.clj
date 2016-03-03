@@ -67,10 +67,10 @@
 
 (defroutes handler
   (GET "/" [] (html [:h1 "Hello World"]))
-  (GET "/test" [req] (html (test-endpoint req))))
+  (GET "/test" [req] (html (test-endpoint req)))
   (GET "/render" [req] (render @game-state))
   (GET "/render.html" [req] (html [:pre (render @game-state)]))
-  (route/not-found (html [:h1 "Page not found"]))
+  (route/not-found (html [:h1 "Page not found"])))
 
 (def app
   (-> handler
