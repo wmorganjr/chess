@@ -1,6 +1,7 @@
 (ns chess.core
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
+            [hiccup.core :refer [html]]
             [clojure.string :as string]
             [ring.middleware.params :refer [wrap-params]]))
 
@@ -59,19 +60,17 @@
 
 (defn test-endpoint
   [req]
-  (str "<pre>"
-  (render {:board (move-piece {:from  "e2"
-                               :to    "e4"
-                               :piece :P}
-                              (:board @game-state))})
-  "</pre>"))
+  [:pre (render {:board (move-piece {:from  "e2"
+                                     :to    "e4"
+                                     :piece :P}
+                                    (:board @game-state))})])
 
 (defroutes handler
-  (GET "/" [] "<h1>Hello World</h1>")
+  (GET "/" [] (html [:h1 "Hello World"]))
+  (GET "/test" [req] (html (test-endpoint req))))
   (GET "/render" [req] (render @game-state))
-  (GET "/test" [req] (test-endpoint req))
-  (GET "/render.html" [req] (str "<pre>" (render @game-state) "</pre>")) 
-  (route/not-found "<h1>Page not found</h1>"))
+  (GET "/render.html" [req] (html [:pre (render @game-state)]))
+  (route/not-found (html [:h1 "Page not found"]))
 
 (def app
   (-> handler
