@@ -36,6 +36,7 @@
 
 (def game-state
   (atom {:board starting-board
+         :moves (list)
          :players {:white starting-player
                    :black starting-player}}))
 
@@ -146,19 +147,34 @@
   (or (and (= :white color) (= rank 6))
       (and (= :black color) (= rank 1))))
 
+(defn pawn-enpassants
+  [board moves square]
+  (let [{:keys [piece from-square to-square]} (first moves)
+        [from-rank from-file] from-square
+        [to-rank to-file] to-square]
+    (if (and (= :pawn (:piece piece))
+             (even? (+ from-rank to-rank)))
+      (filter
+        (fn [capture-square]
+          (= capture-square
+             (map + to-square [(if (= :white (:color piece))
+                                 1 -1) 0])))
+              (pawn-capture-squares square (:color (get-in board square)))))))
+
 (defn pawn-squares
-  [board square]
+  [board moves square]
   (let [{:keys [color]} (get-in board square)]
     (concat [(pawn-forward square color 1)]
             (if (starting-rank? color square)
               [(pawn-forward square color 2)])
-            (pawn-captures board square))))
+            (pawn-captures board square)
+            (pawn-enpassants board moves square))))
 
 (defn moveable-squares
-  [board square]
+  [{:keys [board moves]} square]
   (let [{:keys [piece color]} (get-in board square)]
     (cond
-      (= :pawn piece) (pawn-squares board square)
+      (= :pawn piece) (pawn-squares board moves square)
       (= :knight piece) (knight-squares square)
       (= :king piece) (king-squares square)
       (= :biship piece) (bishop-squares board square)
@@ -205,28 +221,45 @@
                                      :piece :P}
                                     (:board @game-state))})])
 
-(defn legal-move?
-  [board from to]
-  (some #(= (alg-to-square to) %)
-        (moveable-squares board (alg-to-square from))))
+(defn turn
+  [moves]
+  (or (opposite (get-in (first moves) [:piece :color])) :white))
+
+(defn ^:dynamic legal-move?
+  [{:keys [board moves] :as state} from to]
+  (and (= (:color (get-in board (alg-to-square from)))
+          (turn moves))
+       (some #(= (alg-to-square to) %)
+             (moveable-squares state (alg-to-square from)))))
 
 (defn move!
   [req]
   (:return
     (let [from (get (:params req) "from")
-          to   (get (:params req) "to")]
+          from-square (alg-to-square from)
+          to   (get (:params req) "to")
+          to-square (alg-to-square to)]
       (swap! game-state
-        (fn [state]
-          (if (legal-move? (:board state) from to)
-            (assoc
-              (update state :board
-                (fn [board]
-                  (let [piece (get-in board (alg-to-square from))]
-                    (-> board
-                        (assoc-in (alg-to-square from) nil)
-                        (assoc-in (alg-to-square to) piece)))))
-              :return "OK")
-            (assoc state :return "NO")))))))
+        (fn [{:keys [board] :as state}]
+          (let [piece (get-in board from-square)]
+            (if (legal-move? state from to)
+              (-> state
+                (update :board (fn [board]
+                                 (-> board
+                                     (assoc-in from-square nil)
+                                     (assoc-in to-square piece))))
+                (update :moves conj {:from-square from-square
+                                     :to-square   to-square
+                                     :piece       piece
+                                     :from        from
+                                     :to          to})
+                (assoc :return "OK"))
+              (assoc state :return "NO"))))))))
+
+(defn debug!
+  [req]
+  (binding [legal-move? (constantly true)]
+    (move! req)))
 
 (defroutes handler
   (GET "/" [] (html [:h1 "Hello World"]))
@@ -235,6 +268,7 @@
   (GET "/render.html" [req] (html [:pre (render @game-state)]))
   (GET "/styled" [req] (html [:head (include-css "board.css")] [:body (as-html @game-state)]))
   (POST "/move" [] move!)
+  (POST "/debug" [] debug!)
   (route/not-found (html [:h1 "Page not found"])))
 
 (def app
