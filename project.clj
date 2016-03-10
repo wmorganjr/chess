@@ -9,4 +9,6 @@
   :resource-paths ["resources"]
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [hiccup "1.0.5"]
-                 [compojure "1.4.0"]])
+                 [compojure "1.4.0"]]
+  :profiles {:dev {:dependencies [[midje "1.7.0"]]
+                   :plugins      [[lein-midje "3.2"]]}})
