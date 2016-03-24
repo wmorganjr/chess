@@ -197,10 +197,11 @@
 (defn checkmate?
   [{:keys [board moves] :as state}]
   (and (check? state)
-       (remove (fn [{:keys [from-square move capture] :as m}]
+       (every? (fn [{:keys [from-square move capture] :as m}]
                  (check? (update (update-game-state state
                                                     {:from-square from-square
-                                                     :to-square   move}
+                                                     :to-square   move
+                                                     :piece       (get-in board from-square)}
                                                     capture)
                                  :moves conj (null-move (opposite (turn moves))))))
                (legal-moves state))))
