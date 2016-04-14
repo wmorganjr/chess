@@ -4,7 +4,9 @@
             [hiccup.core :refer [html]]
             [hiccup.page :refer [include-css]]
             [clojure.string :as string]
+            [chess.move :as move]
             [chess.pawn :refer [pawn-squares pawn-moves]]
+            [instaparse.core :as insta]
             [ring.middleware.resource :refer [wrap-resource]]
             [ring.middleware.params :refer [wrap-params]]))
 
@@ -273,3 +275,68 @@
   (-> handler
       wrap-params
       (wrap-resource "public")))
+
+; e5
+; Nf6
+; Bxe5
+; dxe
+; e8=Q
+; Rdd5
+; 0-0
+; O-O
+; 0-0-0
+; O-O-O
+; + # ! !! ? ??
+; 0-1 1-0 1/2-1/2
+
+(def move-parser
+  (insta/parser
+    "MOVE = PIECE? FROM CAPTURE? DEST PROMOTE? NOTE*
+     PIECE = #'[RNBQK]'
+     FROM = FILE? RANK?
+     CAPTURE = 'x'
+     DEST = SQUARE | FILE
+     SQUARE = FILE RANK
+     FILE = #'[a-h]'
+     RANK = #'[1-8]'
+     PROMOTE = '=' PIECE
+     NOTE = #'[!?+#]'
+"))
+
+(defmulti move-pattern-pred first)
+
+(defmethod move-pattern-pred :DEST
+  [[_ [_ [_ file] [_ rank]]]]
+  (fn [{:keys [board moves]} legal-move]
+    (= (:to-square legal-move)
+       ;(move/to-square legal-move)
+       (alg-to-square (str file rank)))))
+
+(defmethod move-pattern-pred :default
+  [_]
+  (constantly true))
+
+(defn move-pattern-predicates
+  [move-pattern]
+  (map move-pattern-pred (rest move-pattern)))
+
+(defn match?
+  [game-state legal-move move-pattern]
+  (every? #(% game-state legal-move)
+          (move-pattern-predicates move-pattern)
+          ))
+
+(filter #(match? {:board starting-board
+                  :moves (list)}
+                 %
+                 (move-parser "e5"))
+        (legal-moves {:board starting-board
+                      :moves (list)}))
+
+;move-pattern-predicates
+
+
+
+
+
+
