@@ -125,16 +125,39 @@
         sq (unblocked-squares board square [i j])]
     {:to-square sq}))
 
+(defn nonpawn-moves
+  [board piece square]
+  (case piece
+    :knight (knight-squares square)
+    :king (king-squares square)
+    :bishop (bishop-squares board square)
+    :rook (rook-squares board square)
+    :queen (queen-squares board square)))
+
+(defn maybe-capture
+  [board move]
+  (if (get-in board (move/to-square))
+    (move/capture move)
+    move))
+
 (defn moveable-squares
-  [{:keys [board moves]} square]
-  (let [{:keys [piece color]} (get-in board square)]
-    (cond
-      (= :pawn piece) (pawn-moves board moves square)
-      (= :knight piece) (knight-squares square)
-      (= :king piece) (king-squares square)
-      (= :bishop piece) (bishop-squares board square)
-      (= :rook piece) (rook-squares board square)
-      (= :queen piece) (queen-squares board square))))
+  [{:keys [board moves]} from-square]
+  (let [{:keys [piece color]} (get-in board from-square)]
+    (if (= :pawn piece)
+      (pawn-moves board moves from-square)
+      (->> (nonpawn-to-squares board piece from-square)
+           (map #(move/move from-square %))
+           (map #(maybe-capture board %))))))
+      
+;      (map #(maybe-capture board %) (nonpawn-moves board piece square)))))
+    
+;    (cond
+;      (= :pawn piece) (pawn-moves board moves square)
+;      (= :knight piece) (knight-squares square)
+;      (= :king piece) (king-squares square)
+;      (= :bishop piece) (bishop-squares board square)
+;      (= :rook piece) (rook-squares board square)
+;      (= :queen piece) (queen-squares board square))))
 
 (def opposite {:white :black :black :white})
 
