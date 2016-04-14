@@ -68,7 +68,7 @@
   (for [i [-1 0 1]
         j [-1 0 1]
         :when (not (and (= 0 i) (= 0 j)))]
-    {:move (map + [i j] square)}))
+    {:to-square (map + [i j] square)}))
 
 (defn find-piece
   [board piece]
@@ -82,7 +82,7 @@
   (for [i [-2 -1 1 2]
         j [-2 -1 1 2]
         :when (odd? (+ i j))]
-    {:move (map + [i j] square)}))
+    {:to-square (map + [i j] square)}))
 
 (defn reachable-squares
   [square direction]
@@ -105,7 +105,7 @@
   (for [i [-1 1]
         j [-1 1]
         sq (unblocked-squares board square [i j])]
-    {:move sq}))
+    {:to-square sq}))
 
 (defn rook-squares
   [board square]
@@ -113,7 +113,7 @@
         j [-1 0 1]
         :when (odd? (+ i j))
         sq (unblocked-squares board square [i j])]
-    {:move sq}))
+    {:to-square sq}))
 
 (defn queen-squares
   [board square]
@@ -121,7 +121,7 @@
         j [-1 0 1]
         :when (not (and (zero? i) (zero? j)))
         sq (unblocked-squares board square [i j])]
-    {:move sq}))
+    {:to-square sq}))
 
 (defn moveable-squares
   [{:keys [board moves]} square]
@@ -167,7 +167,7 @@
 (defn legal-move
   [{:keys [board moves] :as state} from-square to-square]
   (and (legal? state from-square to-square)
-       (first (filter #(= to-square (:move %))
+       (first (filter #(= to-square (:to-square %))
                       (moveable-squares state from-square)))))
 
 (defn legal-moves
@@ -177,7 +177,7 @@
           file (range 8)
           :when (= color (get-in board [rank file :color]))
           move (moveable-squares state [rank file])
-          :when (legal? state [rank file] (:move move))]
+          :when (legal? state [rank file] (:to-square move))]
       (assoc move
              :from-square [rank file]))))
 
@@ -190,7 +190,7 @@
   (let [color (turn moves)
         king  (find-piece board {:piece :king
                                  :color color})]
-    (some #(= king (:move %))
+    (some #(= king (:to-square %))
           (legal-moves {:board board
                         :moves (conj moves (null-move color))}))))
 

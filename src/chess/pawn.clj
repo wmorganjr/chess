@@ -56,19 +56,19 @@
 (defn possible-moves
   [board moves square]
   (let [{:keys [color]} (get-in board square)]
-    (concat [{:move (pawn-forward square color 1)}]
+    (concat [{:to-square (pawn-forward square color 1)}]
             (if (two-square-advance? board color square)
-              [{:move (pawn-forward square color 2)}])
+              [{:to-square (pawn-forward square color 2)}])
             (for [square (pawn-captures board square)]
-              {:move    square
+              {:to-square square
                :capture square})
             (for [square (pawn-enpassants board moves square)]
-              {:move    square
+              {:to-square    square
                :capture (map + square [(if (= :white color) 1 -1) 0])}))))
 
 (defn pawn-moves
   [board moves square]
-  (for [{:keys [move capture] :as m} (possible-moves board moves square)
+  (for [{:keys [to-square capture] :as m} (possible-moves board moves square)
         :when (or capture
-                  (nil? (get-in board move)))]
+                  (nil? (get-in board to-square)))]
     m))
