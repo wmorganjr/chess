@@ -303,6 +303,7 @@
      NOTE = #'[!?+#]'
 "))
 
+(def move-pattern-pred nil)
 (defmulti move-pattern-pred first)
 
 (defmethod move-pattern-pred :DEST
@@ -321,19 +322,20 @@
   (map move-pattern-pred (rest move-pattern)))
 
 (defn match?
-  [game-state legal-move move-pattern]
+  [game-state move-pattern legal-move]
   (every? #(% game-state legal-move)
-          (move-pattern-predicates move-pattern)
-          ))
+          (move-pattern-predicates move-pattern)))
 
-(filter #(match? {:board starting-board
-                  :moves (list)}
-                 %
-                 (move-parser "e5"))
-        (legal-moves {:board starting-board
-                      :moves (list)}))
+(defn unambiguous-match
+  [game-state move-pattern]
+  (let [matches (filter (partial match? game-state move-pattern)
+                        (legal-moves game-state))]
+    (and (not (next matches))
+         (first matches))))
 
-;move-pattern-predicates
+(unambiguous-match {:board starting-board
+                    :moves (list)} (move-parser "e4"))
+
 
 
 
