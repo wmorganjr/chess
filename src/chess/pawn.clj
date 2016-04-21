@@ -64,7 +64,7 @@
                                      [square, square])
                                    (for [square (pawn-enpassants board moves square)]
                                      [square, (map + square [(if (= :white color) 1 -1) 0])]))]
-      (-> (move/move pawn target)
+      (-> (move/move pawn square target)
           (cond-> capture (move/capture capture))))))
 
 (defn pawn-moves
