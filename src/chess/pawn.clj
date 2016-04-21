@@ -38,7 +38,7 @@
           (= capture-square
              (map + to-square [(if (= :white (:color piece))
                                  1 -1) 0])))
-              (pawn-capture-squares square (:color (get-in board square)))))))
+        (pawn-capture-squares square (:color (get-in board square)))))))
 
 (defn pawn-squares
   [board moves square]
