@@ -9,7 +9,7 @@
   (:promotion move))
 
 (defn from-square [move]
-  (:square move))
+  (:from move))
 
 (defn to-square [move]
   (:to move))
