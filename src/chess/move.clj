@@ -1,51 +1,45 @@
 (ns chess.move)
 
-(defn move
-  [piece from-square to-square])
+;; Accessors
+
+(defn captured-square [move]
+  (:capture move))
+
+(defn promoted-piece [move]
+  (:promotion move))
+
+(defn from-square [move]
+  (:square move))
+
+(defn to-square [move]
+  (:to move))
+
+(defn moved-piece [move]
+  (:piece move))
+
+(defn castled-rook [move]
+  (:castle-with move))
+
+(defn notes [move]
+  (:notes move))
 
 ;; Constructors
 
-(defn promote
-  [move piece])
+(defn move [piece from-square to-square]
+  {:piece piece, :from from-square, :to to-square})
+
+(defn promote [move piece]
+  (assoc move :promotion piece))
 
 (defn capture
-  ([move])
-  ([move square]))
+  ([move]
+     (capture move (to-square move)))
+  ([move square]
+     (assoc move :capture square)))
 
 (defn notate
-  [move note])
+  [move note]
+  (update move :notes (fnil conj []) note))
 
-(defn castle
-  [rook-square])
-
-;; Accessors
-
-(defn captured-square
-  [move])
-
-(defn promoted-piece
-  [move])
-
-(defn from-square
-  [move])
-
-(defn to-square
-  [move])
-
-(defn moved-piece
-  [move])
-
-(defn castled-rook
-  [move])
-
-(defn notes
-  [move])
-
-
-
-
-
-
-
-
-
+(defn castle [rook-square]
+  {:castle-with rook-square})
