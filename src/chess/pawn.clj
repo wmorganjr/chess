@@ -1,4 +1,5 @@
-(ns chess.pawn)
+(ns chess.pawn
+  (:require [chess.move :as move]))
 
 (defn pawn-forward
   "Returns the list of forward square available to a pawn"
@@ -55,20 +56,20 @@
 
 (defn possible-moves
   [board moves square]
-  (let [{:keys [color]} (get-in board square)]
-    (concat [{:to-square (pawn-forward square color 1)}]
-            (if (two-square-advance? board color square)
-              [{:to-square (pawn-forward square color 2)}])
-            (for [square (pawn-captures board square)]
-              {:to-square square
-               :capture square})
-            (for [square (pawn-enpassants board moves square)]
-              {:to-square    square
-               :capture (map + square [(if (= :white color) 1 -1) 0])}))))
+  (let [{:keys [color] :as pawn} (get-in board square)]
+    (for [[target capture] (concat [[(pawn-forward square color 1), nil]]
+                                   (if (two-square-advance? board color square)
+                                     [[(pawn-forward square color 2), nil]])
+                                   (for [square (pawn-captures board square)]
+                                     [square, square])
+                                   (for [square (pawn-enpassants board moves square)]
+                                     [square, (map + square [(if (= :white color) 1 -1) 0])]))]
+      (-> (move/move pawn target)
+          (cond-> capture (move/capture capture))))))
 
 (defn pawn-moves
   [board moves square]
-  (for [{:keys [to-square capture] :as m} (possible-moves board moves square)
-        :when (or capture
-                  (nil? (get-in board to-square)))]
-    m))
+  (->> (possible-moves board moves square)
+       (filter (fn [move]
+                 (or (move/captured-square move)
+                     (nil? (get-in board (move/to-square move))))))))
