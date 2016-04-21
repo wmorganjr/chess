@@ -28,15 +28,16 @@
 
 (defn pawn-enpassants
   [board moves square]
-  (let [{:keys [piece from-square to-square]} (first moves)
-        [from-rank from-file] from-square
-        [to-rank to-file] to-square]
-    (if (and (= :pawn (:piece piece))
+  (let [move (first moves)
+        {:keys [color piece]} (move/moved-piece move)
+        [from-rank from-file] (move/from-square move)
+        [to-rank to-file :as to-square] (move/to-square move)]
+    (if (and (= :pawn piece)
              (even? (+ from-rank to-rank)))
       (filter
         (fn [capture-square]
           (= capture-square
-             (map + to-square [(if (= :white (:color piece))
+             (map + to-square [(if (= :white color)
                                  1 -1) 0])))
         (pawn-capture-squares square (:color (get-in board square)))))))
 
