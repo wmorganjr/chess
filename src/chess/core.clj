@@ -70,7 +70,7 @@
   (for [i [-1 0 1]
         j [-1 0 1]
         :when (not (and (= 0 i) (= 0 j)))]
-    {:to-square (map + [i j] square)}))
+    (map + [i j] square)))
 
 (defn find-piece
   [board piece]
@@ -84,7 +84,7 @@
   (for [i [-2 -1 1 2]
         j [-2 -1 1 2]
         :when (odd? (+ i j))]
-    {:to-square (map + [i j] square)}))
+    (map + [i j] square)))
 
 (defn reachable-squares
   [square direction]
@@ -107,7 +107,7 @@
   (for [i [-1 1]
         j [-1 1]
         sq (unblocked-squares board square [i j])]
-    {:to-square sq}))
+    sq))
 
 (defn rook-squares
   [board square]
@@ -115,7 +115,7 @@
         j [-1 0 1]
         :when (odd? (+ i j))
         sq (unblocked-squares board square [i j])]
-    {:to-square sq}))
+    sq))
 
 (defn queen-squares
   [board square]
@@ -123,9 +123,9 @@
         j [-1 0 1]
         :when (not (and (zero? i) (zero? j)))
         sq (unblocked-squares board square [i j])]
-    {:to-square sq}))
+    sq))
 
-(defn nonpawn-moves
+(defn nonpawn-to-squares
   [board piece square]
   (case piece
     :knight (knight-squares square)
@@ -136,45 +136,35 @@
 
 (defn maybe-capture
   [board move]
-  (if (get-in board (move/to-square))
+  (if (get-in board (move/to-square move))
     (move/capture move)
     move))
 
-(defn moveable-squares
+(defn moves-from-square
   [{:keys [board moves]} from-square]
-  (let [{:keys [piece color]} (get-in board from-square)]
+  (let [{:keys [piece color] :as p} (get-in board from-square)]
     (if (= :pawn piece)
       (pawn-moves board moves from-square)
       (->> (nonpawn-to-squares board piece from-square)
-           (map #(move/move from-square %))
+           (map #(move/move p from-square %))
            (map #(maybe-capture board %))))))
-      
-;      (map #(maybe-capture board %) (nonpawn-moves board piece square)))))
-    
-;    (cond
-;      (= :pawn piece) (pawn-moves board moves square)
-;      (= :knight piece) (knight-squares square)
-;      (= :king piece) (king-squares square)
-;      (= :bishop piece) (bishop-squares board square)
-;      (= :rook piece) (rook-squares board square)
-;      (= :queen piece) (queen-squares board square))))
 
 (def opposite {:white :black :black :white})
 
 (defn turn
   [moves]
-  (or (opposite (get-in (first moves) [:piece :color])) :white))
+  (opposite (:color (move/moved-piece (first moves)) :black)))
 
 (defn update-game-state
-  [{:keys [board] :as state} {:keys [from-square to-square piece]} capture]
-  (-> state
+  [game-state move]
+  (-> game-state
     (update :board (fn [board]
-                     (-> (if capture (assoc-in board capture nil) board)
-                         (assoc-in from-square nil)
-                         (assoc-in to-square piece))))
-    (update :moves conj {:from-square from-square
-                         :to-square   to-square
-                         :piece       piece})))
+                     (-> (if-let [cap (move/captured-square move)]
+                           (assoc-in board cap nil)
+                           board)
+                         (assoc-in (move/from-square move) nil)
+                         (assoc-in (move/to-square move) (move/moved-piece move)))))
+    (update :moves conj move)))
 
 (declare check?)
 
@@ -190,10 +180,10 @@
              (:color (get-in board to-square)))))
 
 (defn legal-move
-  [{:keys [board moves] :as state} from-square to-square]
+  [state from-square to-square]
   (and (legal? state from-square to-square)
-       (first (filter #(= to-square (:to-square %))
-                      (moveable-squares state from-square)))))
+       (first (filter #(= to-square (move/to-square %))
+                      (moves-from-square state from-square)))))
 
 (defn legal-moves
   [{:keys [board moves] :as state}]
@@ -201,10 +191,10 @@
     (for [rank (range 8)
           file (range 8)
           :when (= color (get-in board [rank file :color]))
-          move (moveable-squares state [rank file])
-          :when (legal? state [rank file] (:to-square move))]
-      (assoc move
-             :from-square [rank file]))))
+          move (moves-from-square state [rank file])
+          ;:let [_ (prn move)]
+          :when (legal? state [rank file] (move/to-square move))]
+      move)))
 
 (defn null-move
   [color]
@@ -215,34 +205,26 @@
   (let [color (turn moves)
         king  (find-piece board {:piece :king
                                  :color color})]
-    (some #(= king (:to-square %))
+    (some #(= king (move/to-square %))
           (legal-moves {:board board
                         :moves (conj moves (null-move color))}))))
 
 (defn checkmate?
   [{:keys [board moves] :as state}]
   (and (check? state)
-       (every? (fn [{:keys [from-square move capture] :as m}]
-                 (check? (update (update-game-state state
-                                                    {:from-square from-square
-                                                     :to-square   move
-                                                     :piece       (get-in board from-square)}
-                                                    capture)
-                                 :moves conj (null-move (opposite (turn moves))))))
-               (legal-moves state))))
+       (every? (fn [move]
+                 (check? (update (update-game-state state move)
+                                 :moves conj (null-move (opposite (turn moves)))))))
+       (legal-moves state)))
 
 (defn do-move!
   [from-square to-square]
   (swap! game-state
          (fn [{:keys [board] :as state}]
            (let [piece (get-in board from-square)]
-             (if-let [{:keys [capture]} (legal-move state from-square to-square)]
+             (if-let [move (legal-move state from-square to-square)]
                (let [color (:color (get-in board from-square))
-                     new-state (update-game-state state
-                                         {:from-square from-square
-                                          :to-square   to-square
-                                          :piece       piece}
-                                         capture)]
+                     new-state (update-game-state state move)]
                  (if (check? (update new-state :moves conj (null-move (opposite color))))
                    (assoc state :return "NO")
                    (assoc new-state :return "OK")))
@@ -287,18 +269,6 @@
                   (check? state) "Check!"
                   :else "")]])
 
-(defroutes handler
-  (GET "/styled" [req] (html [:head (include-css "board.css")] [:body (as-html @game-state)]))
-  (POST "/move" [] move!)
-  (POST "/debug" [] debug!)
-  (POST "/random" [] random!)
-  (route/not-found (html [:h1 "Page not found"])))
-
-(def app
-  (-> handler
-      wrap-params
-      (wrap-resource "public")))
-
 ; e5
 ; Nf6
 ; Bxe5
@@ -314,11 +284,11 @@
 
 (def move-parser
   (insta/parser
-    "MOVE = PIECE? FROM CAPTURE? DEST PROMOTE? NOTE*
-     PIECE = #'[RNBQK]'
+    "MOVE = PIECE FROM CAPTURE DEST PROMOTE? NOTE*
+     PIECE = #'[RNBQK]'?
      FROM = FILE? RANK?
-     CAPTURE = 'x'
-     DEST = SQUARE | FILE
+     CAPTURE = 'x'?
+     DEST = SQUARE
      SQUARE = FILE RANK
      FILE = #'[a-h]'
      RANK = #'[1-8]'
@@ -332,9 +302,29 @@
 (defmethod move-pattern-pred :DEST
   [[_ [_ [_ file] [_ rank]]]]
   (fn [{:keys [board moves]} legal-move]
-    (= (:to-square legal-move)
-       ;(move/to-square legal-move)
+    (= (move/to-square legal-move)
        (alg-to-square (str file rank)))))
+
+(defn piece-mapper
+  [p]
+  (get {"K" :king
+        "Q" :queen
+        "R" :rook
+        "B" :bishop
+        "N" :knight} p :pawn))
+
+(defmethod move-pattern-pred :PIECE
+  [[_ p]]
+  (fn [{:keys [board moves]} legal-move]
+    (= (:piece (move/moved-piece legal-move))
+       (piece-mapper p))))
+
+(defmethod move-pattern-pred :CAPTURE
+  [[_ x]]
+  (fn [{:keys [board moves]} legal-move]
+    (let [cap (move/captured-square legal-move)]
+      (or (and x cap)
+          (and (not x) (not cap))))))
 
 (defmethod move-pattern-pred :default
   [_]
@@ -357,11 +347,32 @@
          (first matches))))
 
 (unambiguous-match {:board starting-board
-                    :moves (list)} (move-parser "e4"))
+                    :moves (list)} (move-parser "Nc3"))
+
+(legal-moves {:board starting-board
+              :moves (list)})
 
 
+(defn move-parser!
+  [req]
+  (:return
+    (let [move-string (get (:params req) "move")
+          parsed-move (move-parser move-string)
+          move (unambiguous-match @game-state parsed-move)]
+      (cond
+        move (do-move! (move/from-square move) (move/to-square move))
+        parsed-move {:return (format "Not a legal move: %s" (prn-str parsed-move))}
+        :else {:return "Parse failure"}))))
 
+(defroutes handler
+  (GET "/styled" [req] (html [:head (include-css "board.css")] [:body (as-html @game-state)]))
+  (POST "/move" [] move!)
+  (POST "/move-parser" [] move-parser!)
+  (POST "/debug" [] debug!)
+  (POST "/random" [] random!)
+  (route/not-found (html [:h1 "Page not found"])))
 
-
-
-
+(def app
+  (-> handler
+      wrap-params
+      (wrap-resource "public")))
