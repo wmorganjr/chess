@@ -2,7 +2,7 @@
   (:require [chess.move :as move]))
 
 (defn pawn-forward
-  "Returns the list of forward square available to a pawn"
+  "Returns the list of forward squares available to a pawn"
   [square color n]
   (map + square [(if (= :white color) (- n) n) 0]))
 
